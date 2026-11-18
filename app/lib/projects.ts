@@ -3,7 +3,7 @@ import type { Language } from "./i18n";
 
 export async function listProjects(language: Language) {
   return prisma.project.findMany({
-    where: { isPublished: true },
+    where: { isPublished: true, deletedAt: null },
     include: { translations: { where: { language } } },
     orderBy: { createdAt: "desc" },
   });

@@ -1,5 +1,5 @@
-import { prisma } from "@/app/lib/prisma";
-import type { Prisma } from "@/app/generated/prisma/client";
+import { prisma } from "../prisma";
+import type { Prisma } from "../../generated/prisma/client";
 
 export function audit(
   userId: number | null,
@@ -7,8 +7,9 @@ export function audit(
   entityType: string,
   entityId?: number,
   details?: Prisma.InputJsonValue,
+  db: { auditLog: typeof prisma.auditLog } = prisma,
 ) {
-  return prisma.auditLog.create({
+  return db.auditLog.create({
     data: { userId, action, entityType, entityId, details },
   });
 }

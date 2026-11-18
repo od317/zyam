@@ -59,6 +59,9 @@ model Project {
   updatedAt      DateTime             @updatedAt
   translations   ProjectTranslation[]
   images         ProjectImage[]
+  deletedAt      DateTime?
+
+  @@index([isPublished, createdAt])
 }
 
 model ProjectTranslation {
