@@ -25,10 +25,18 @@ enum ImageStatus {
   failed
 }
 
+enum SpecValueType {
+  number
+  text
+}
+
 model Service {
   id           Int                  @id @default(autoincrement())
   slug         String               @unique
   translations ServiceTranslation[]
+  priceMode    PriceMode            @default(on_request)
+  priceMin     Decimal?             @db.Decimal(12, 2)
+  priceMax     Decimal?             @db.Decimal(12, 2)
   projects     Project[]
 }
 
@@ -58,6 +66,8 @@ model Project {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   translations   ProjectTranslation[]
+  products       ProjectProduct[]
+  finishes       ProjectFinish[]
   images         ProjectImage[]
   deletedAt      DateTime?
 
@@ -77,25 +87,25 @@ model ProjectTranslation {
 }
 
 model ProjectImage {
-  id        Int         @id @default(autoincrement())
-  projectId Int
-  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sortOrder Int
-  status    ImageStatus @default(processing)
-  width     Int?
-  height    Int?
-  thumbUrl  String?
-  mediumUrl String?
-  largeUrl  String?
+  id          Int         @id @default(autoincrement())
+  projectId   Int
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sortOrder   Int
+  status      ImageStatus @default(processing)
+  width       Int?
+  height      Int?
+  thumbUrl    String?
+  mediumUrl   String?
+  largeUrl    String?
   originalKey String
   blurDataUrl String?
-  attempts    Int       @default(0)
+  attempts    Int         @default(0)
   lastError   String?
   lockedAt    DateTime?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime    @default(now())
 
-  @@index([status, createdAt])
   @@unique([projectId, sortOrder])
+  @@index([status, createdAt])
 }
 
 enum InquiryType {
@@ -213,4 +223,214 @@ model PendingLogin {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model ProductCategory {
+  id           Int                          @id @default(autoincrement())
+  slug         String                       @unique
+  sortOrder    Int                          @default(0)
+  translations ProductCategoryTranslation[]
+  series       ProductSeries[]
+  products     Product[]
+}
+
+model ProductCategoryTranslation {
+  id         Int             @id @default(autoincrement())
+  categoryId Int
+  category   ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  language   Language
+  name       String
+
+  @@unique([categoryId, language])
+}
+
+model ProductSeries {
+  id           Int                        @id @default(autoincrement())
+  slug         String                     @unique
+  categoryId   Int
+  category     ProductCategory            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  translations ProductSeriesTranslation[]
+  products     Product[]
+
+  @@index([categoryId])
+}
+
+model ProductSeriesTranslation {
+  id          Int           @id @default(autoincrement())
+  seriesId    Int
+  series      ProductSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  language    Language
+  name        String
+  description String?
+
+  @@unique([seriesId, language])
+}
+
+model Product {
+  id           Int                  @id @default(autoincrement())
+  slug         String               @unique
+  code         String               @unique
+  categoryId   Int
+  category     ProductCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  seriesId     Int?
+  series       ProductSeries?       @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  priceMode    PriceMode            @default(on_request)
+  priceMin     Decimal?             @db.Decimal(12, 2)
+  priceMax     Decimal?             @db.Decimal(12, 2)
+  isPublished  Boolean              @default(false)
+  deletedAt    DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  translations ProductTranslation[]
+  images       ProductImage[]
+  specs        ProductSpec[]
+  finishes     ProductFinish[]
+  projects     ProjectProduct[]
+
+  @@index([categoryId, isPublished])
+  @@index([seriesId])
+}
+
+model ProductTranslation {
+  id          Int      @id @default(autoincrement())
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  language    Language
+  name        String
+  description String
+
+  @@unique([productId, language])
+}
+
+model ProductImage {
+  id          Int         @id @default(autoincrement())
+  productId   Int
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder   Int
+  status      ImageStatus @default(processing)
+  originalKey String
+  width       Int?
+  height      Int?
+  thumbUrl    String?
+  mediumUrl   String?
+  largeUrl    String?
+  blurDataUrl String?
+  attempts    Int         @default(0)
+  lastError   String?
+  lockedAt    DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@unique([productId, sortOrder])
+  @@index([status, createdAt])
+}
+
+model SpecDefinition {
+  id           Int                         @id @default(autoincrement())
+  key          String                      @unique
+  unit         String?
+  valueType    SpecValueType
+  translations SpecDefinitionTranslation[]
+  specs        ProductSpec[]
+}
+
+model SpecDefinitionTranslation {
+  id           Int            @id @default(autoincrement())
+  definitionId Int
+  definition   SpecDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  language     Language
+  name         String
+
+  @@unique([definitionId, language])
+}
+
+model ProductSpec {
+  id           Int            @id @default(autoincrement())
+  productId    Int
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  definitionId Int
+  definition   SpecDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  numberValue  Decimal?       @db.Decimal(12, 3)
+  textValue    String?
+
+  @@unique([productId, definitionId])
+  @@index([definitionId, numberValue])
+}
+
+model Finish {
+  id           Int                 @id @default(autoincrement())
+  slug         String              @unique
+  colorHex     String?
+  isPublished  Boolean             @default(false)
+  deletedAt    DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  translations FinishTranslation[]
+  images       FinishImage[]
+  products     ProductFinish[]
+  projects     ProjectFinish[]
+
+  @@index([isPublished, createdAt])
+}
+
+model FinishTranslation {
+  id          Int      @id @default(autoincrement())
+  finishId    Int
+  finish      Finish   @relation(fields: [finishId], references: [id], onDelete: Cascade)
+  language    Language
+  name        String
+  description String?
+
+  @@unique([finishId, language])
+}
+
+model FinishImage {
+  id          Int         @id @default(autoincrement())
+  finishId    Int
+  finish      Finish      @relation(fields: [finishId], references: [id], onDelete: Cascade)
+  sortOrder   Int
+  status      ImageStatus @default(processing)
+  originalKey String
+  width       Int?
+  height      Int?
+  thumbUrl    String?
+  mediumUrl   String?
+  largeUrl    String?
+  blurDataUrl String?
+  attempts    Int         @default(0)
+  lastError   String?
+  lockedAt    DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@unique([finishId, sortOrder])
+  @@index([status, createdAt])
+}
+
+model ProductFinish {
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  finishId  Int
+  finish    Finish  @relation(fields: [finishId], references: [id], onDelete: Cascade)
+
+  @@id([productId, finishId])
+  @@index([finishId])
+}
+
+model ProjectProduct {
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, productId])
+  @@index([productId])
+}
+
+model ProjectFinish {
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  finishId  Int
+  finish    Finish  @relation(fields: [finishId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, finishId])
+  @@index([finishId])
 }
