@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { isLanguage } from "@/app/lib/i18n";
-import { listProjects } from "@/app/lib/projects";
+import { listPublicProjects } from "@/app/lib/public/projects";
 
 export default async function ProjectsPage({
   params,
@@ -10,13 +10,13 @@ export default async function ProjectsPage({
   const { lang } = await params;
   if (!isLanguage(lang)) notFound();
 
-  const projects = await listProjects(lang);
+  const { items } = await listPublicProjects({ lang });
 
   return (
     <main dir={lang === "ar" ? "rtl" : "ltr"}>
       <ul>
-        {projects.map((p) => (
-          <li key={p.id}>{p.translations[0]?.title ?? p.slug}</li>
+        {items.map((p) => (
+          <li key={p.slug}>{p.title}</li>
         ))}
       </ul>
     </main>
