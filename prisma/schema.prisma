@@ -87,7 +87,14 @@ model ProjectImage {
   thumbUrl  String?
   mediumUrl String?
   largeUrl  String?
+  originalKey String
+  blurDataUrl String?
+  attempts    Int       @default(0)
+  lastError   String?
+  lockedAt    DateTime?
+  createdAt   DateTime  @default(now())
 
+  @@index([status, createdAt])
   @@unique([projectId, sortOrder])
 }
 
