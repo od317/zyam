@@ -133,20 +133,21 @@ enum Role {
 }
 
 model User {
-  id           Int          @id @default(autoincrement())
-  email        String       @unique
-  name         String
-  passwordHash String
-  role         Role         @default(editor)
-  isActive     Boolean      @default(true)
-  otpSecret    String?
-  otpEnabled   Boolean      @default(false)
-  lastLoginAt  DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  sessions     Session[]
-  backupCodes  BackupCode[]
-  auditLogs    AuditLog[]
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  role          Role           @default(editor)
+  isActive      Boolean        @default(true)
+  otpSecret     String?
+  otpEnabled    Boolean        @default(false)
+  lastLoginAt   DateTime?
+  pendingLogins PendingLogin[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  sessions      Session[]
+  backupCodes   BackupCode[]
+  auditLogs     AuditLog[]
 }
 
 model Session {
@@ -184,4 +185,22 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime
+}
+
+model PendingLogin {
+  id        String   @id // hash of the pending token, like Session.id
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
