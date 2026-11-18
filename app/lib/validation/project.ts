@@ -36,6 +36,8 @@ export const projectInput = z
       .array(translation)
       .min(1, "At least one language is required")
       .max(2),
+    productIds: z.array(z.number().int().positive()).max(100).default([]),
+    finishIds: z.array(z.number().int().positive()).max(100).default([]),
   })
   .superRefine((v, ctx) => {
     const add = (path: string, message: string) =>

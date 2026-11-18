@@ -2,7 +2,7 @@ import { prisma } from "../prisma";
 import { Prisma } from "../../generated/prisma/client";
 import { audit } from "../auth/audit";
 import type { Actor } from "../auth/require-user";
-import { projectInput } from "../validation/project";
+import { ProjectInput, projectInput } from "../validation/project";
 
 export type ActionResult =
   | { ok: true; id: number }
@@ -22,6 +22,38 @@ function mapDbError(e: unknown): ActionResult {
   }
   throw e;
 }
+
+async function checkLinks(
+  d: ProjectInput,
+): Promise<Record<string, string> | null> {
+  const errors: Record<string, string> = {};
+  const productIds = [...new Set(d.productIds)];
+  const finishIds = [...new Set(d.finishIds)];
+  if (
+    productIds.length &&
+    (await prisma.product.count({
+      where: { id: { in: productIds }, deletedAt: null },
+    })) !== productIds.length
+  )
+    errors.productIds = "One of the products does not exist";
+  if (
+    finishIds.length &&
+    (await prisma.finish.count({
+      where: { id: { in: finishIds }, deletedAt: null },
+    })) !== finishIds.length
+  )
+    errors.finishIds = "One of the finishes does not exist";
+  return Object.keys(errors).length ? errors : null;
+}
+
+const links = (d: ProjectInput) => ({
+  products: {
+    create: [...new Set(d.productIds)].map((productId) => ({ productId })),
+  },
+  finishes: {
+    create: [...new Set(d.finishIds)].map((finishId) => ({ finishId })),
+  },
+});
 
 export async function createProject(
   actor: Actor,
@@ -44,7 +76,8 @@ export async function createProject(
     );
   }
   const d = parsed.data;
-
+  const badLinks = await checkLinks(d);
+  if (badLinks) return fail(badLinks);
   // 3 + 4. write and audit, together
   try {
     const project = await prisma.$transaction(async (tx) => {
@@ -61,6 +94,7 @@ export async function createProject(
           translations: {
             create: d.translations.map((t) => ({ ...t, city: t.city ?? null })),
           },
+          ...links(d),
         },
       });
       await audit(
@@ -110,6 +144,8 @@ export async function updateProject(
     await prisma.$transaction(async (tx) => {
       // Replace translations wholesale: simpler than diffing, and safe inside a transaction.
       await tx.projectTranslation.deleteMany({ where: { projectId: id } });
+      await tx.projectProduct.deleteMany({ where: { projectId: id } });
+      await tx.projectFinish.deleteMany({ where: { projectId: id } });
       await tx.project.update({
         where: { id },
         data: {
