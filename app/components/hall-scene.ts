@@ -431,11 +431,13 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
   for (const x of [-1.3, 1.3])
     for (const z of [-0.4, 0.4]) cyl(0.03, 0.03, 0.12, gold, x, 0.06, z, sofa);
 
+  const chairs: THREE.Group[] = [];
   for (const side of [-1, 1] as const) {
     const chair = new THREE.Group();
     chair.position.set(side * 2.7, 0, -11.6);
     chair.rotation.y = -side * 0.6; // turned toward the middle of the room
     scene.add(chair);
+    chairs.push(chair);
     box(0.9, 0.35, 0.9, fabricTeal, 0, 0.28, 0, chair);
     box(0.7, 0.14, 0.7, fabricTeal, 0, 0.52, 0.05, chair);
     box(0.9, 0.75, 0.2, fabricTeal, 0, 0.75, -0.35, chair);
@@ -787,7 +789,8 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
       console.warn("wall textures failed, keeping the painted walls", e);
     }
 
-    // ----- furniture (both load at the same time) -----
+    // ----- furniture (all load at the same time) -----
+    const CHAIR_FIX = 0; // the model's own forward direction: tune like the sofa's -Math.PI / 2
     await Promise.all([
       placeModel({
         url: "/room/models/sofa2.glb",
@@ -801,6 +804,14 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
         rotateY: 0,
         replace: table,
       }),
+      ...chairs.map((c) =>
+        placeModel({
+          url: "/room/models/chair.glb",
+          width: 0.9,
+          rotateY: CHAIR_FIX + c.rotation.y - Math.PI / 2, // fix the model's direction, then add the turn toward the room's middle
+          replace: c,
+        }),
+      ),
     ]);
 
     renderer.shadowMap.needsUpdate = true;
