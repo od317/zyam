@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
 const GOLD = 0xc9a24b;
 const GOLD_LIGHT = 0xe6c97a;
@@ -337,43 +339,27 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
   const ceiling = plane(HALF_W * 2, ROOM_D, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, ROOM_H, cz);
-  const wallL = plane(
-    ROOM_D,
-    ROOM_H,
-    mat(
+  // One material per wall. The wall size is kept so the textures can tile at a real-world scale.
+  const wallMats: { m: THREE.MeshStandardMaterial; w: number }[] = [];
+  const wallMat = (w: number) => {
+    const m = mat(
       new THREE.MeshStandardMaterial({
-        map: wallPanelTex(8),
+        map: wallPanelTex(w === ROOM_D ? 8 : 6), // painted placeholder until the real texture arrives
         roughness: 0.55,
         metalness: 0.25,
       }),
-    ),
-  );
+    );
+    wallMats.push({ m, w });
+    return m;
+  };
+
+  const wallL = plane(ROOM_D, ROOM_H, wallMat(ROOM_D));
   wallL.rotation.y = Math.PI / 2;
   wallL.position.set(-HALF_W, ROOM_H / 2, cz);
-  const wallR = plane(
-    ROOM_D,
-    ROOM_H,
-    mat(
-      new THREE.MeshStandardMaterial({
-        map: wallPanelTex(8),
-        roughness: 0.55,
-        metalness: 0.25,
-      }),
-    ),
-  );
+  const wallR = plane(ROOM_D, ROOM_H, wallMat(ROOM_D));
   wallR.rotation.y = -Math.PI / 2;
   wallR.position.set(HALF_W, ROOM_H / 2, cz);
-  const wallBack = plane(
-    HALF_W * 2,
-    ROOM_H,
-    mat(
-      new THREE.MeshStandardMaterial({
-        map: wallPanelTex(6),
-        roughness: 0.55,
-        metalness: 0.25,
-      }),
-    ),
-  );
+  const wallBack = plane(HALF_W * 2, ROOM_H, wallMat(HALF_W * 2));
   wallBack.position.set(0, ROOM_H / 2, -ROOM_D);
   scene.add(floor, ceiling, wallL, wallR, wallBack);
 
@@ -669,6 +655,159 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
     };
     scrollRaf = requestAnimationFrame(step);
   }
+  // ---------- real assets (they replace the placeholders as they arrive) ----------
+  const ASSETS = {
+    floor: {
+      dir: "/room/textures/floor",
+      diff: "lacquered_cherry_wood_diff_1k.jpg",
+      nor: "lacquered_cherry_wood_nor_gl_1k.jpg",
+      arm: "lacquered_cherry_wood_arm_1k.jpg", // AO (red) + roughness (green) + metalness (blue)
+      repeat: [6, 8] as const, // how many times the texture tiles across the room: tune by eye
+      tint: 0x8a7a6c, // multiplies the texture: darker and less red, for palette B
+    },
+    walls: {
+      dir: "/room/textures/walls",
+      diff: "japanese_cedar_planks_diff_1k.jpg",
+      arm: "japanese_cedar_planks_arm_1k.jpg",
+      meters: 2, // how many meters one texture tile covers: tune by eye
+      tint: 0x6e6258, // cedar is light and orange; this pulls it toward dark walnut
+    },
+  };
+  const loadedModels: THREE.Object3D[] = [];
+
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+  // Loads a model, fits it to `width` meters, stands it on the floor where `replace` stood, and removes the placeholder.
+  async function placeModel(cfg: {
+    url: string;
+    width: number;
+    rotateY?: number;
+    replace: THREE.Object3D;
+  }) {
+    try {
+      const gltf = await gltfLoader.loadAsync(cfg.url);
+      if (disposed) return;
+      const model = gltf.scene;
+
+      const size = new THREE.Box3()
+        .setFromObject(model)
+        .getSize(new THREE.Vector3());
+      model.scale.setScalar(cfg.width / Math.max(size.x, size.z));
+      model.rotation.y = cfg.rotateY ?? 0;
+      const fitted = new THREE.Box3().setFromObject(model);
+      const center = fitted.getCenter(new THREE.Vector3());
+      model.position.set(
+        cfg.replace.position.x - center.x,
+        -fitted.min.y,
+        cfg.replace.position.z - center.z,
+      );
+
+      model.traverse((o) => {
+        if (o instanceof THREE.Mesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+      scene.remove(cfg.replace);
+      cfg.replace.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.geometry.dispose();
+      });
+      scene.add(model);
+      loadedModels.push(model);
+    } catch (e) {
+      console.warn("room asset failed, keeping the placeholder:", cfg.url, e);
+    }
+  }
+
+  async function loadAssets() {
+    const texLoader = new THREE.TextureLoader();
+    const loadTex = async (dir: string, name: string, srgb: boolean) => {
+      const t = await texLoader.loadAsync(`${dir}/${name}`);
+      t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = maxAniso;
+      textures.push(t);
+      return t;
+    };
+    // A copy of a texture with its own tiling (the image data is shared, not downloaded again).
+    const tiled = (t: THREE.Texture, rx: number, ry: number) => {
+      const c = t.clone();
+      c.repeat.set(rx, ry);
+      c.needsUpdate = true;
+      textures.push(c);
+      return c;
+    };
+
+    // ----- floor -----
+    try {
+      const f = ASSETS.floor;
+      const [diff, nor, arm] = await Promise.all([
+        loadTex(f.dir, f.diff, true),
+        loadTex(f.dir, f.nor, false),
+        loadTex(f.dir, f.arm, false),
+      ]);
+      if (disposed) return;
+      for (const t of [diff, nor, arm]) t.repeat.set(f.repeat[0], f.repeat[1]);
+      floorMat.map = diff;
+      floorMat.normalMap = nor;
+      floorMat.aoMap = arm;
+      floorMat.roughnessMap = arm;
+      floorMat.metalnessMap = arm;
+      floorMat.roughness = 1;
+      floorMat.metalness = 1;
+      floorMat.color.set(f.tint);
+      floorMat.needsUpdate = true;
+    } catch (e) {
+      console.warn("floor textures failed, keeping the painted floor", e);
+    }
+
+    // ----- walls -----
+    try {
+      const w = ASSETS.walls;
+      const [diff, arm] = await Promise.all([
+        loadTex(w.dir, w.diff, true),
+        loadTex(w.dir, w.arm, false),
+      ]);
+      if (disposed) return;
+      for (const { m, w: width } of wallMats) {
+        const rx = width / w.meters;
+        const ry = ROOM_H / w.meters;
+        m.map = tiled(diff, rx, ry);
+        const a = tiled(arm, rx, ry);
+        m.aoMap = a;
+        m.roughnessMap = a;
+        m.metalnessMap = a;
+        m.roughness = 1;
+        m.metalness = 1;
+        m.color.set(w.tint);
+        m.needsUpdate = true;
+      }
+    } catch (e) {
+      console.warn("wall textures failed, keeping the painted walls", e);
+    }
+
+    // ----- furniture (both load at the same time) -----
+    await Promise.all([
+      placeModel({
+        url: "/room/models/sofa2.glb",
+        width: 2.6,
+        rotateY: -Math.PI / 2,
+        replace: sofa,
+      }),
+      placeModel({
+        url: "/room/models/table.glb",
+        width: 1.4,
+        rotateY: 0,
+        replace: table,
+      }),
+    ]);
+
+    renderer.shadowMap.needsUpdate = true;
+    update(currentP);
+    renderer.render(scene, camera);
+  }
+  void loadAssets();
 
   function dispose() {
     disposed = true;
@@ -680,6 +819,19 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
       if (o instanceof THREE.Mesh) o.geometry.dispose();
       if (o instanceof THREE.SpotLight) o.shadow.map?.dispose();
     });
+    for (const m of loadedModels) {
+      m.traverse((o) => {
+        if (!(o instanceof THREE.Mesh)) return;
+        o.geometry.dispose();
+        for (const mm of Array.isArray(o.material)
+          ? o.material
+          : [o.material]) {
+          for (const v of Object.values(mm))
+            if (v instanceof THREE.Texture) v.dispose();
+          mm.dispose();
+        }
+      });
+    }
     materials.forEach((m) => m.dispose());
     textures.forEach((t) => t.dispose());
     envRT.dispose();
