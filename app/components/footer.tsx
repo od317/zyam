@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Language } from "@/app/lib/i18n";
 import { dict } from "@/app/lib/dictionary";
+import { Copyright } from "./copyright";
 
 type Settings = Record<string, string>;
 
@@ -101,9 +102,7 @@ export function Footer({
           </Link>
         </div>
       </div>
-      <p className="border-t border-line py-4 text-center text-xs text-muted">
-        © {new Date().getFullYear()} Zyam Design · {t.rights}
-      </p>
+      <Copyright rights={t.rights} />
     </footer>
   );
 }

@@ -2,6 +2,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../prisma";
 import type { Language } from "../i18n";
 import { coverImage, pageParams, pick, priceView, readyImages } from "./common";
+import { cacheLife, cacheTag } from "next/cache";
 import { searchIds } from "./search";
 import {
   finishCardSelect,
@@ -53,6 +54,9 @@ export type ProjectListQuery = {
 };
 
 export async function listPublicProjects(opts: ProjectListQuery) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("projects");
   const { page, limit, skip } = pageParams(opts.page, opts.limit);
 
   const where: Prisma.ProjectWhereInput = { ...live };
@@ -93,6 +97,10 @@ export async function listPublicProjects(opts: ProjectListQuery) {
 
 // Values for the filter dropdowns.
 export async function listProjectFilters(lang: Language) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("projects", "services");
+
   const [services, years, cities] = await Promise.all([
     prisma.service.findMany({
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -125,6 +133,10 @@ export async function listProjectFilters(lang: Language) {
 }
 
 export async function getPublicProject(slug: string, lang: Language) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("projects", "products", "finishes");
+
   const p = await prisma.project.findFirst({
     where: { slug, ...live },
     select: {

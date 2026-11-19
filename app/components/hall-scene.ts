@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 
 const GOLD = 0xc9a24b;
 const GOLD_LIGHT = 0xe6c97a;
@@ -39,6 +40,9 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
   renderer.setClearColor(0x050504);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap; // if the console says it's deprecated, use THREE.PCFShadowMap
+  RectAreaLightUniformsLib.init();
   const maxAniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
@@ -253,6 +257,7 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
       emissiveMap: artTex,
     }),
   );
+  let casters = false;
 
   const add = (m: THREE.Object3D, parent: THREE.Object3D = scene) => (
     parent.add(m),
@@ -270,6 +275,8 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
   ) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     mesh.position.set(x, y, z);
+    mesh.castShadow = casters;
+    mesh.receiveShadow = true;
     parent.add(mesh);
     return mesh;
   };
@@ -285,11 +292,16 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
   ) => {
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 20), m);
     mesh.position.set(x, y, z);
+    mesh.castShadow = casters;
+    mesh.receiveShadow = true;
     parent.add(mesh);
     return mesh;
   };
-  const plane = (w: number, h: number, m: THREE.Material) =>
-    new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+  const plane = (w: number, h: number, m: THREE.Material) => {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+    mesh.receiveShadow = true;
+    return mesh;
+  };
 
   // ---------- the door wall (outside face is what you see during the intro) ----------
   box(24, 8, 0.4, dark, -13.5, 4, 0); // left of the opening
@@ -387,7 +399,10 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
 
   // ---------- window, curtains, chandelier ----------
   box(4.4, 3.4, 0.1, gold, 0, 2.7, -ROOM_D + 0.08);
-  const win = plane(4, 3, beacon);
+  const daylight = mat(
+    new THREE.MeshBasicMaterial({ color: 0xdfeaf7, fog: false }),
+  );
+  const win = plane(4, 3, daylight);
   win.position.set(0, 2.7, -ROOM_D + 0.14);
   add(win);
   for (const x of [-2.9, 2.9])
@@ -414,7 +429,7 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
       chandelier.add(bulb);
     }
   }
-
+  casters = true;
   // ---------- furniture ----------
   const sofa = new THREE.Group();
   sofa.position.set(0, 0, -14.3);
@@ -474,21 +489,84 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
     frame(HALF_W - 0.04, z, -1);
   }
 
-  // ---------- lights (intensities are guesses: tune by eye) ----------
-  scene.add(new THREE.AmbientLight(0x4a3f2c, 0.9));
-  scene.add(new THREE.HemisphereLight(0xffe6b8, 0x1a120a, 0.35));
-  const lamps: [number, number, number, number, number][] = [
-    [0, 3.6, -8, 90, 22], // chandelier
-    [0, 2.6, -14.5, 35, 14], // window
-    [0, 3.6, 3, 40, 14], // lights the doors from outside
+  const blobTex = canvasTex(128, 128, (g, w, h) => {
+    const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    r.addColorStop(0, "rgba(0,0,0,0.75)");
+    r.addColorStop(0.6, "rgba(0,0,0,0.25)");
+    r.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = r;
+    g.fillRect(0, 0, w, h);
+  });
+  const blobMat = mat(
+    new THREE.MeshBasicMaterial({
+      map: blobTex,
+      transparent: true,
+      depthWrite: false,
+    }),
+  );
+  const blob = (x: number, z: number, w: number, d: number) => {
+    const m = plane(w, d, blobMat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, 0.02, z);
+    add(m);
+  };
+  blob(0, -14.3, 4.4, 2.2); // sofa
+  blob(-2.7, -11.6, 1.9, 1.9); // armchairs
+  blob(2.7, -11.6, 1.9, 1.9);
+  blob(0, -11.9, 2.3, 1.5); // coffee table
+  blob(-HALF_W + 0.4, -8, 1.1, 2.8); // console table
+
+  casters = false;
+  // ---------- lights ----------
+  const L = 1; // one knob: raise if the room is too dark, lower if too bright
+
+  // Low ambient on purpose. Flat light is what makes a scene look like a toy.
+  scene.add(new THREE.AmbientLight(0x4a3f2c, 0.2));
+  scene.add(new THREE.HemisphereLight(0xfff0d6, 0x1a120a, 0.5));
+
+  // Ceiling downlights: warm pools of light. Only the two over the furniture cast shadows.
+  const downlights: [number, number, boolean][] = [
+    [-2.5, -7, false],
+    [2.5, -7, false],
+    [0, -12.2, true], // over the coffee table
+    [0, -14.2, true], // over the sofa
   ];
-  for (const [x, y, z, intensity, dist] of lamps) {
-    const l = new THREE.PointLight(0xffd88a, intensity, dist, 2);
-    l.position.set(x, y, z);
-    scene.add(l);
+  for (const [x, z, shadow] of downlights) {
+    const spot = new THREE.SpotLight(0xffd9a0, 160 * L, 12, 0.65, 0.85, 2);
+    spot.position.set(x, ROOM_H - 0.1, z);
+    spot.target.position.set(x, 0, z - 0.2);
+    scene.add(spot.target);
+    if (shadow) {
+      spot.castShadow = true;
+      spot.shadow.mapSize.set(1024, 1024);
+      spot.shadow.bias = -0.0005;
+      spot.shadow.radius = 4;
+      spot.shadow.camera.near = 0.5;
+      spot.shadow.camera.far = 8;
+    }
+    scene.add(spot);
   }
-  const headlamp = new THREE.PointLight(0xffe2a8, 12, 10, 2);
+
+  const chandelierLight = new THREE.PointLight(0xffd88a, 45 * L, 14, 2);
+  chandelierLight.position.set(0, 3.6, -8);
+  scene.add(chandelierLight);
+
+  // Cool daylight from the window against the warm lamps: this contrast reads as "real".
+  const windowLight = new THREE.RectAreaLight(0xcfe0ff, 5 * L, 4, 3);
+  windowLight.position.set(0, 2.7, -ROOM_D + 0.2);
+  windowLight.lookAt(0, 2.7, 0);
+  scene.add(windowLight);
+
+  const outsideLight = new THREE.PointLight(0xffd88a, 40 * L, 14, 2); // lights the doors from outside
+  outsideLight.position.set(0, 3.6, 3);
+  scene.add(outsideLight);
+
+  const headlamp = new THREE.PointLight(0xffe2a8, 4 * L, 10, 2); // was 12, which flattened everything
   camera.add(headlamp);
+
+  // Nothing that casts shadows ever moves, so render the shadows once, not every frame.
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
 
   // ---------- camera: intro timeline + scroll ----------
   let startZ = 7;
@@ -600,6 +678,7 @@ export function createHall(canvas: HTMLCanvasElement, opts: HallOptions = {}) {
     window.removeEventListener("resize", resize);
     scene.traverse((o) => {
       if (o instanceof THREE.Mesh) o.geometry.dispose();
+      if (o instanceof THREE.SpotLight) o.shadow.map?.dispose();
     });
     materials.forEach((m) => m.dispose());
     textures.forEach((t) => t.dispose());

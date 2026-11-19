@@ -1,6 +1,5 @@
 "use server";
-
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireUser } from "@/app/lib/auth/require-user";
 import { languages } from "@/app/lib/i18n";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/app/lib/admin/projects";
 
 function refreshPublicPages() {
+  updateTag("projects"); // clears the cached list and project pages right now
   for (const lang of languages) revalidatePath(`/${lang}/projects`);
 }
 
