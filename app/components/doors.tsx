@@ -23,7 +23,7 @@ export function DoorPanels({
         aria-hidden="true"
         className={`${face} left-0 border-r border-gold/50`}
         style={{ transformOrigin: "left center" }}
-        initial={false}
+        initial={{ rotateY: 0 }}
         animate={{ rotateY: open ? 100 : 0 }}
         transition={{ duration, ease }}
         onAnimationComplete={() => open && onOpened?.()}
@@ -34,7 +34,7 @@ export function DoorPanels({
         aria-hidden="true"
         className={`${face} right-0 border-l border-gold/50`}
         style={{ transformOrigin: "right center" }}
-        initial={false}
+        initial={{ rotateY: 0 }}
         animate={{ rotateY: open ? -100 : 0 }}
         transition={{ duration, ease }}
       >

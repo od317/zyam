@@ -3,6 +3,7 @@ import type { Language } from "../i18n";
 import { getSettings } from "../admin/settings";
 import { pick, priceView } from "./common";
 import { projectCardSelect, toProjectCard } from "./projects";
+import { cacheLife, cacheTag } from "next/cache";
 
 const live = { isPublished: true, deletedAt: null } as const;
 
@@ -66,6 +67,9 @@ export async function getPublicService(slug: string, lang: Language) {
 
 // Settings for the footer, contact page and about page. Empty translated text falls back to the other language.
 export async function getPublicSettings(lang: Language) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("settings");
   const { plain, translated } = await getSettings();
   const other: Language = lang === "ar" ? "en" : "ar";
   const text = Object.fromEntries(

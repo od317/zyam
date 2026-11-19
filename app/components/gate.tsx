@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { DoorPanels } from "./doors";
+import { HallCanvas } from "./hall-canvas";
 
 const KEY = "zyam_gate_seen";
 type Phase = "closed" | "opening" | "done";
@@ -10,6 +11,7 @@ type Phase = "closed" | "opening" | "done";
 export function Gate({ skipLabel }: { skipLabel: string }) {
   // Starts "closed" so the server-rendered HTML already covers the hall.
   const [phase, setPhase] = useState<Phase>("closed");
+  const [fallback, setFallback] = useState(false); // true when WebGL or the chunk failed
 
   useEffect(() => {
     let seen = false;
@@ -27,7 +29,6 @@ export function Gate({ skipLabel }: { skipLabel: string }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Remember the visit only once the gate has finished (not at the start, so React's dev double-run is harmless).
   useEffect(() => {
     if (phase !== "done") return;
     try {
@@ -35,7 +36,6 @@ export function Gate({ skipLabel }: { skipLabel: string }) {
     } catch {}
   }, [phase]);
 
-  // No scrolling behind the gate.
   useEffect(() => {
     if (phase === "done") return;
     const prev = document.body.style.overflow;
@@ -57,16 +57,27 @@ export function Gate({ skipLabel }: { skipLabel: string }) {
             data-gate
             role="dialog"
             aria-label="Zyam Design"
-            className="fixed inset-0 z-[100]"
+            className="fixed inset-0 z-[100] bg-ink"
             style={{ perspective: 1800 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: 0.5 }}
           >
+            {/* CSS doors: the server-rendered cover, and the fallback if 3D fails */}
             <DoorPanels
-              open={phase === "opening"}
+              open={fallback && phase === "opening"}
               duration={1.6}
-              onOpened={() => setPhase("done")}
+              onOpened={() => fallback && setPhase("done")}
             />
+
+            {!fallback && (
+              <HallCanvas
+                playing={phase === "opening"}
+                seconds={3.2}
+                timeoutMs={4000}
+                onDone={() => setPhase("done")}
+                onFail={() => setFallback(true)}
+              />
+            )}
 
             <motion.div
               className="pointer-events-none absolute inset-0 flex items-center justify-center"

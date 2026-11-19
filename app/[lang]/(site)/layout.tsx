@@ -3,6 +3,8 @@ import { isLanguage } from "@/app/lib/i18n";
 import { getPublicSettings } from "@/app/lib/public/site";
 import { Header } from "@/app/components/header";
 import { Footer } from "@/app/components/footer";
+import { DoorTransition } from "@/app/components/door-transition";
+import { NavMark } from "@/app/components/nav-mark";
 
 export default async function SiteLayout({
   children,
@@ -19,7 +21,10 @@ export default async function SiteLayout({
     <>
       <Header lang={lang} />
       <div id="main" className="min-h-[70vh]">
-        {children}
+        <div id="main" className="min-h-[70vh]">
+          {children}
+        </div>
+        <NavMark />
       </div>
       <Footer lang={lang} settings={settings} />
     </>

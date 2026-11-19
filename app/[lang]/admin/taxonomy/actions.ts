@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireUser } from "@/app/lib/auth/require-user";
 import { languages } from "@/app/lib/i18n";
 import type { ActionResult } from "@/app/lib/admin/common";
@@ -63,7 +63,9 @@ export async function deleteServiceAction(id: number) {
 export async function updateSettingsAction(input: unknown) {
   const user = await requireUser(["admin"]);
   const res = await updateSettings(user, input);
-  if (res.ok)
+  if (res.ok) {
+    updateTag("settings");
     for (const lang of languages) revalidatePath(`/${lang}`, "layout");
+  }
   return res;
 }
