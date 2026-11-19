@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Hall = { play(seconds: number): Promise<void>; dispose(): void };
+export type Hall = {
+  play(seconds: number): Promise<void>;
+  animateTo(to: number, seconds: number): Promise<boolean>;
+  snapTo(p: number): void;
+  setScroll(s: number): void;
+  dispose(): void;
+};
 
 export const preloadHall = () => import("./hall-scene");
 
@@ -15,23 +21,25 @@ export function HallCanvas({
   timeoutMs,
   onDone,
   onFail,
+  onHall,
 }: {
   playing: boolean;
-  instant?: boolean; // start already inside the hall, no animation
+  instant?: boolean;
   seconds: number;
   endZ?: number;
   endFov?: number;
   timeoutMs: number;
   onDone: () => void;
   onFail: () => void;
+  onHall?: (hall: Hall | null) => void; // gives the parent a handle, used for scroll
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hallRef = useRef<Hall | null>(null);
   const [ready, setReady] = useState(false);
-  const callbacks = useRef({ onDone, onFail });
+  const callbacks = useRef({ onDone, onFail, onHall });
 
   useEffect(() => {
-    callbacks.current = { onDone, onFail };
+    callbacks.current = { onDone, onFail, onHall };
   });
 
   useEffect(() => {
@@ -55,6 +63,7 @@ export function HallCanvas({
         hallRef.current = hall;
         clearTimeout(timer);
         setReady(true);
+        callbacks.current.onHall?.(hall);
       })
       .catch(() => {
         if (cancelled) return;
@@ -66,6 +75,7 @@ export function HallCanvas({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      callbacks.current.onHall?.(null);
       hall?.dispose();
       hallRef.current = null;
     };

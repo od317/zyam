@@ -1,14 +1,14 @@
-import Link from "next/link";
 import type { toProjectCard } from "@/app/lib/public/projects";
 import { SiteImage } from "./site-image";
+import { ProjectLink } from "./project-link";
 
 type Card = ReturnType<typeof toProjectCard>;
 
 export function ProjectCard({ p, lang }: { p: Card; lang: "ar" | "en" }) {
   return (
-    <Link
+    <ProjectLink
       href={`/${lang}/projects/${p.slug}`}
-      className="group block overflow-hidden rounded border border-line bg-ink-2"
+      className="group block overflow-hidden rounded border border-line bg-ink-2/75 backdrop-blur-sm"
     >
       <div className="aspect-[4/3] overflow-hidden">
         <SiteImage
@@ -26,6 +26,6 @@ export function ProjectCard({ p, lang }: { p: Card; lang: "ar" | "en" }) {
           {[p.city, p.year].filter(Boolean).join(" · ")}
         </p>
       </div>
-    </Link>
+    </ProjectLink>
   );
 }

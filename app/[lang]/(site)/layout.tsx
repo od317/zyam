@@ -3,8 +3,8 @@ import { isLanguage } from "@/app/lib/i18n";
 import { getPublicSettings } from "@/app/lib/public/site";
 import { Header } from "@/app/components/header";
 import { Footer } from "@/app/components/footer";
-import { DoorTransition } from "@/app/components/door-transition";
 import { NavMark } from "@/app/components/nav-mark";
+import { HallStage } from "@/app/components/hall-stage";
 
 export default async function SiteLayout({
   children,
@@ -20,12 +20,11 @@ export default async function SiteLayout({
   return (
     <>
       <Header lang={lang} />
+      <HallStage />
       <div id="main" className="min-h-[70vh]">
-        <div id="main" className="min-h-[70vh]">
-          {children}
-        </div>
-        <NavMark />
+        {children}
       </div>
+      <NavMark />
       <Footer lang={lang} settings={settings} />
     </>
   );
