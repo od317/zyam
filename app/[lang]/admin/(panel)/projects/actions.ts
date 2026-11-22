@@ -9,6 +9,28 @@ import {
   deleteProject,
   type ActionResult,
 } from "@/app/lib/admin/projects";
+import { z } from "zod";
+import { deleteImage, reorderImages } from "@/app/lib/admin/images";
+
+export async function deleteProjectImageAction(imageId: number) {
+  const user = await requireUser();
+  const res = await deleteImage(user, "project", imageId);
+  if (res.ok) refreshPublicPages();
+  return res;
+}
+
+export async function reorderProjectImagesAction(
+  projectId: number,
+  ids: unknown,
+) {
+  const user = await requireUser();
+  // Server actions are public endpoints: never trust the shape of what arrives.
+  const parsed = z.array(z.number().int().positive()).max(200).safeParse(ids);
+  if (!parsed.success) return { ok: false as const, error: "Invalid list" };
+  const res = await reorderImages(user, "project", projectId, parsed.data);
+  if (res.ok) refreshPublicPages();
+  return res;
+}
 
 function refreshPublicPages() {
   updateTag("projects"); // clears the cached list and project pages right now

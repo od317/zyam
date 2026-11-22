@@ -13,6 +13,11 @@ export async function POST(
   if (!Number.isInteger(projectId))
     return Response.json({ error: "Bad project id" }, { status: 400 });
 
+  // Refuse early when the browser already says it is too big (the body is not read at all).
+  const declared = Number(req.headers.get("content-length") ?? 0);
+  if (declared > MAX_BYTES + 64 * 1024)
+    return Response.json({ error: "File is too large" }, { status: 413 });
+
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File))
