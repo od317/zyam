@@ -188,6 +188,33 @@ const ar = {
     saving: "جارٍ الحفظ...",
     saved: "تم الحفظ",
   },
+  iq: {
+    title: "الطلبات",
+    newCount: "جديد",
+    filters: {
+      all: "الكل",
+      new: "جديد",
+      contacted: "تم التواصل",
+      closed: "مغلق",
+    },
+    status: { new: "جديد", contacted: "تم التواصل", closed: "مغلق" },
+    types: {
+      consultation: "استشارة",
+      project_idea: "فكرة مشروع",
+      quote_request: "طلب عرض سعر",
+    },
+    project: "المشروع",
+    images: "صور مرفقة",
+    note: "ملاحظة داخلية",
+    notePlaceholder: "لا تظهر للعميل",
+    save: "حفظ",
+    call: "اتصال",
+    whatsapp: "واتساب",
+    empty: "لا توجد طلبات",
+    prev: "السابق",
+    next: "التالي",
+    pageOf: "صفحة {p} من {n}",
+  },
 };
 
 // Typed as the shape of `ar`: a missing or extra key here fails to compile.
@@ -375,6 +402,33 @@ const en: typeof ar = {
     save: "Save settings",
     saving: "Saving...",
     saved: "Saved",
+  },
+  iq: {
+    title: "Inquiries",
+    newCount: "new",
+    filters: {
+      all: "All",
+      new: "New",
+      contacted: "Contacted",
+      closed: "Closed",
+    },
+    status: { new: "New", contacted: "Contacted", closed: "Closed" },
+    types: {
+      consultation: "Consultation",
+      project_idea: "Project idea",
+      quote_request: "Quote request",
+    },
+    project: "Project",
+    images: "attached images",
+    note: "Internal note",
+    notePlaceholder: "Never shown to the customer",
+    save: "Save",
+    call: "Call",
+    whatsapp: "WhatsApp",
+    empty: "No inquiries",
+    prev: "Previous",
+    next: "Next",
+    pageOf: "Page {p} of {n}",
   },
 };
 
