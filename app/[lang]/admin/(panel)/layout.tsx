@@ -38,8 +38,10 @@ async function Shell({
 
   // Add a line here each time a screen is built.
   const nav = [
-    { href: `/${lang}/admin`, label: t.nav.home, badge: 0 },
+    { href: `/${lang}/admin`, label: t.nav.home, badge: 0, exact: true },
     { href: `/${lang}/admin/projects`, label: t.nav.projects, badge: 0 },
+    { href: `/${lang}/admin/products`, label: t.nav.products, badge: 0 },
+    { href: `/${lang}/admin/finishes`, label: t.nav.finishes, badge: 0 },
     {
       href: `/${lang}/admin/inquiries`,
       label: t.nav.inquiries,

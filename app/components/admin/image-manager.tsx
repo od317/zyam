@@ -59,7 +59,7 @@ export function ImageManager({
   projectId: number;
   images: Img[];
 }) {
-  const t = adminDict[lang].img;
+  const t = adminDict[lang].p.img;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [jobs, setJobs] = useState<Job[]>([]);
