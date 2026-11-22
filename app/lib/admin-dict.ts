@@ -10,6 +10,7 @@ const ar = {
     finishes: "الكسوات",
     inquiries: "الطلبات",
     taxonomy: "إعدادات الكتالوج",
+    settings: "الإعدادات",
   },
   logout: "تسجيل الخروج",
   role: { admin: "مدير", editor: "محرر" },
@@ -164,6 +165,29 @@ const ar = {
         "يوجد {n} مشروع محذوف محفوظ في السجل، ولذلك لا يمكن حذف هذه الخدمة.",
     },
   },
+  st: {
+    contact: "بيانات التواصل",
+    social: "حسابات التواصل الاجتماعي",
+    texts: "نصوص الموقع",
+    fields: {
+      contact_phone: "الهاتف",
+      contact_whatsapp: "واتساب",
+      contact_email: "البريد الإلكتروني",
+      social_instagram: "إنستغرام",
+      social_facebook: "فيسبوك",
+      social_tiktok: "تيك توك",
+      about_text: "نص صفحة من نحن",
+      address: "العنوان",
+      working_hours: "ساعات العمل",
+    },
+    hints: {
+      contact_whatsapp: "الرقم مع رمز الدولة، بدون + أو مسافات",
+      social: "الرابط الكامل، يبدأ بـ https://",
+    },
+    save: "حفظ الإعدادات",
+    saving: "جارٍ الحفظ...",
+    saved: "تم الحفظ",
+  },
 };
 
 // Typed as the shape of `ar`: a missing or extra key here fails to compile.
@@ -176,6 +200,7 @@ const en: typeof ar = {
     finishes: "Cladding",
     inquiries: "Inquiries",
     taxonomy: "Catalog setup",
+    settings: "Settings",
   },
   logout: "Log out",
   role: { admin: "Admin", editor: "Editor" },
@@ -327,6 +352,29 @@ const en: typeof ar = {
       archivedProjects:
         "{n} deleted project(s) are kept in the history, so this service cannot be removed.",
     },
+  },
+  st: {
+    contact: "Contact details",
+    social: "Social accounts",
+    texts: "Site texts",
+    fields: {
+      contact_phone: "Phone",
+      contact_whatsapp: "WhatsApp",
+      contact_email: "Email",
+      social_instagram: "Instagram",
+      social_facebook: "Facebook",
+      social_tiktok: "TikTok",
+      about_text: "About page text",
+      address: "Address",
+      working_hours: "Working hours",
+    },
+    hints: {
+      contact_whatsapp: "Number with country code, no + or spaces",
+      social: "Full link, starting with https://",
+    },
+    save: "Save settings",
+    saving: "Saving...",
+    saved: "Saved",
   },
 };
 

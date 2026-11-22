@@ -48,6 +48,9 @@ async function Shell({
       badge: newInquiries,
     },
     { href: `/${lang}/admin/taxonomy`, label: t.nav.taxonomy, badge: 0 },
+    ...(user.role === "admin"
+      ? [{ href: `/${lang}/admin/settings`, label: t.nav.settings, badge: 0 }]
+      : []),
   ];
 
   return (
