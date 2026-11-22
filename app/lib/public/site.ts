@@ -8,6 +8,9 @@ import { cacheLife, cacheTag } from "next/cache";
 const live = { isPublished: true, deletedAt: null } as const;
 
 export async function listPublicServices(lang: Language) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("services", "projects");
   const rows = await prisma.service.findMany({
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: {
@@ -35,6 +38,9 @@ export async function listPublicServices(lang: Language) {
 }
 
 export async function getPublicService(slug: string, lang: Language) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("services", "projects");
   const s = await prisma.service.findUnique({
     where: { slug },
     select: {

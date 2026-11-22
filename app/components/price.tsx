@@ -2,19 +2,21 @@ import type { Language } from "@/app/lib/i18n";
 import type { PriceView } from "@/app/lib/public/common";
 import { catalogLabels } from "@/app/lib/labels";
 
-const CURRENCY = "USD"; // decision for you: the client's currency
+export const CURRENCY = "USD"; // decision for you: the client's currency
 
 export function Price({
   price,
   lang,
   className,
+  from = false,
 }: {
   price: PriceView | null;
   lang: Language;
   className?: string;
+  from?: boolean; // services: show "Starting from" before an exact price
 }) {
-  if (!price) return null; // "hidden": nothing is shown
-  // "-u-nu-latn" keeps Latin digits (1,200) in Arabic too. Remove it for Arabic-Indic digits.
+  if (!price) return null;
+  const l = catalogLabels[lang];
   const fmt = new Intl.NumberFormat(lang === "ar" ? "ar-u-nu-latn" : "en", {
     style: "currency",
     currency: CURRENCY,
@@ -22,9 +24,9 @@ export function Price({
   });
   const text =
     price.mode === "exact"
-      ? fmt.format(price.amount)
+      ? `${from ? `${l.startingFrom} ` : ""}${fmt.format(price.amount)}`
       : price.mode === "range"
         ? `${fmt.format(price.min)} – ${fmt.format(price.max)}`
-        : catalogLabels[lang].onRequest;
+        : l.onRequest;
   return <span className={className}>{text}</span>;
 }

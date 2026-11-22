@@ -34,6 +34,11 @@ export const catalogLabels = {
     year: "السنة",
     sortOldest: "الأقدم",
     sortYear: "حسب السنة",
+    startingFrom: "تبدأ من",
+    seeServiceProjects: "عرض كل مشاريع هذه الخدمة",
+    latestProjects: "من أعمالنا",
+    projectsCount: "مشروع",
+    backServices: "كل الخدمات",
   },
   en: {
     productsTitle: "Our Products",
@@ -68,5 +73,10 @@ export const catalogLabels = {
     year: "Year",
     sortOldest: "Oldest",
     sortYear: "By year",
+    startingFrom: "Starting from",
+    seeServiceProjects: "See all projects in this service",
+    latestProjects: "From our work",
+    projectsCount: "projects",
+    backServices: "All services",
   },
 } satisfies Record<Language, Record<string, string>>;

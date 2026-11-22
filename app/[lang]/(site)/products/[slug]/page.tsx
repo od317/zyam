@@ -5,9 +5,29 @@ import { dict } from "@/app/lib/dictionary";
 import { getPublicProduct } from "@/app/lib/public/catalog";
 import { catalogLabels } from "@/app/lib/labels";
 import { SiteImage } from "@/app/components/site-image";
-import { Price } from "@/app/components/price";
+import { CURRENCY, Price } from "@/app/components/price";
 import { ProductCard } from "@/app/components/product-card";
 import { FinishCard } from "@/app/components/finish-card";
+import { Metadata } from "next";
+import { absolute, pageMetadata } from "@/app/lib/seo";
+import { JsonLd } from "@/app/components/json-ld";
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>;
+}): Promise<Metadata> {
+  const { lang, slug } = await params;
+  if (!isLanguage(lang)) return {};
+  const p = await getPublicProduct(slug, lang);
+  if (!p) return {};
+  return pageMetadata({
+    lang,
+    path: `/products/${slug}`,
+    title: p.name,
+    description: p.description,
+    image: p.images[0],
+  });
+}
 
 export default async function ProductPage({
   params,
@@ -22,6 +42,28 @@ export default async function ProductPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          sku: product.code,
+          description: product.description || undefined,
+          category: product.category.name,
+          image: product.images
+            .map((i) => i.largeUrl)
+            .filter((u): u is string => !!u)
+            .map(absolute),
+          // Only an exact price is published. Ranges, "on request" and "hidden" stay out.
+          ...(product.price?.mode === "exact" && {
+            offers: {
+              "@type": "Offer",
+              price: product.price.amount,
+              priceCurrency: CURRENCY,
+            },
+          }),
+        }}
+      />
       <Link
         href={`/${lang}/products`}
         className="text-sm text-gold hover:text-gold-light"
