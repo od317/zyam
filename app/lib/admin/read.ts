@@ -6,6 +6,159 @@ import { pageParams, pick } from "../public/common";
 import { searchIds } from "../public/search";
 import { assertStaff } from "./common";
 
+type PriceModeValue = "exact" | "range" | "hidden" | "on_request";
+
+export type TaxItem = {
+  id: number;
+  label: string; // name in the dashboard language
+  slug: string;
+  key: string;
+  sortOrder: number;
+  categoryId: number | null;
+  unit: string;
+  valueType: "number" | "text";
+  priceMode: PriceModeValue;
+  priceMin: number | null;
+  priceMax: number | null;
+  translations: {
+    ar: { name: string; description: string };
+    en: { name: string; description: string };
+  };
+  usage: number; // live products or projects that use it
+  extra: number; // categories: how many series
+};
+
+const twoLangs = (
+  rows: { language: string; name: string; description?: string | null }[],
+) => {
+  const g = (l: string) => {
+    const r = rows.find((x) => x.language === l);
+    return { name: r?.name ?? "", description: r?.description ?? "" };
+  };
+  return { ar: g("ar"), en: g("en") };
+};
+
+const blankItem: Omit<TaxItem, "id" | "label" | "translations"> = {
+  slug: "",
+  key: "",
+  sortOrder: 0,
+  categoryId: null,
+  unit: "",
+  valueType: "number",
+  priceMode: "on_request",
+  priceMin: null,
+  priceMax: null,
+  usage: 0,
+  extra: 0,
+};
+
+export async function getTaxonomy(actor: Actor, lang: Language) {
+  assertStaff(actor);
+  const liveOnly = { where: { deletedAt: null } } as const;
+  const [services, categories, series, specs] = await Promise.all([
+    prisma.service.findMany({
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        slug: true,
+        sortOrder: true,
+        priceMode: true,
+        priceMin: true,
+        priceMax: true,
+        translations: {
+          select: { language: true, name: true, description: true },
+        },
+        _count: { select: { projects: liveOnly } },
+      },
+    }),
+    prisma.productCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        slug: true,
+        sortOrder: true,
+        translations: { select: { language: true, name: true } },
+        _count: { select: { products: liveOnly, series: true } },
+      },
+    }),
+    prisma.productSeries.findMany({
+      orderBy: [{ categoryId: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        slug: true,
+        categoryId: true,
+        translations: {
+          select: { language: true, name: true, description: true },
+        },
+        _count: { select: { products: liveOnly } },
+      },
+    }),
+    prisma.specDefinition.findMany({
+      orderBy: { id: "asc" },
+      select: {
+        id: true,
+        key: true,
+        unit: true,
+        valueType: true,
+        translations: { select: { language: true, name: true } },
+        _count: { select: { specs: true } },
+      },
+    }),
+  ]);
+
+  const label = (
+    rows: { language: Language | string; name: string }[],
+    fallback: string,
+  ) =>
+    pick(rows as { language: Language; name: string }[], lang)?.name ??
+    fallback;
+
+  return {
+    services: services.map<TaxItem>((s) => ({
+      ...blankItem,
+      id: s.id,
+      slug: s.slug,
+      label: label(s.translations, s.slug),
+      sortOrder: s.sortOrder,
+      priceMode: s.priceMode,
+      priceMin: s.priceMin?.toNumber() ?? null,
+      priceMax: s.priceMax?.toNumber() ?? null,
+      translations: twoLangs(s.translations),
+      usage: s._count.projects,
+    })),
+    categories: categories.map<TaxItem>((c) => ({
+      ...blankItem,
+      id: c.id,
+      slug: c.slug,
+      label: label(c.translations, c.slug),
+      sortOrder: c.sortOrder,
+      translations: twoLangs(c.translations),
+      usage: c._count.products,
+      extra: c._count.series,
+    })),
+    series: series.map<TaxItem>((s) => ({
+      ...blankItem,
+      id: s.id,
+      slug: s.slug,
+      label: label(s.translations, s.slug),
+      categoryId: s.categoryId,
+      translations: twoLangs(s.translations),
+      usage: s._count.products,
+    })),
+    specs: specs.map<TaxItem>((s) => ({
+      ...blankItem,
+      id: s.id,
+      key: s.key,
+      label: label(s.translations, s.key),
+      unit: s.unit ?? "",
+      valueType: s.valueType,
+      translations: twoLangs(s.translations),
+      usage: s._count.specs,
+    })),
+  };
+}
+export type TaxonomyData = Awaited<ReturnType<typeof getTaxonomy>>;
+
 export async function adminCounts(actor: Actor) {
   assertStaff(actor);
   const [newInquiries, published, drafts] = await Promise.all([

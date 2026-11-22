@@ -47,6 +47,7 @@ async function Shell({
       label: t.nav.inquiries,
       badge: newInquiries,
     },
+    { href: `/${lang}/admin/taxonomy`, label: t.nav.taxonomy, badge: 0 },
   ];
 
   return (

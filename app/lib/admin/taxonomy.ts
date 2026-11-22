@@ -19,31 +19,36 @@ import {
 type Entity = "category" | "series" | "spec" | "service";
 
 // Friendly message when something still uses the item we want to delete.
+// Returns a code like "used:products:3". The screen turns it into text in the right language.
 async function usage(entity: Entity, id: number): Promise<string | null> {
   if (entity === "category") {
-    const [products, series] = await Promise.all([
+    const [live, all, series] = await Promise.all([
       prisma.product.count({ where: { categoryId: id, deletedAt: null } }),
+      // Deleted products stay in the table, and the database refuses to orphan them too.
+      prisma.product.count({ where: { categoryId: id } }),
       prisma.productSeries.count({ where: { categoryId: id } }),
     ]);
-    if (products)
-      return `This category has ${products} product(s). Move or delete them first.`;
-    if (series) return `This category has ${series} series. Delete them first.`;
+    if (live) return `used:products:${live}`;
+    if (series) return `used:series:${series}`;
+    if (all) return `used:archivedProducts:${all}`;
   }
   if (entity === "series") {
     const n = await prisma.product.count({
       where: { seriesId: id, deletedAt: null },
     });
-    if (n) return `${n} product(s) use this series. Move them first.`;
+    if (n) return `used:products:${n}`;
   }
   if (entity === "spec") {
     const n = await prisma.productSpec.count({ where: { definitionId: id } });
-    if (n) return `${n} product(s) use this spec. Remove it from them first.`;
+    if (n) return `used:products:${n}`;
   }
   if (entity === "service") {
-    const n = await prisma.project.count({
-      where: { serviceId: id, deletedAt: null },
-    });
-    if (n) return `This service has ${n} project(s). Move them first.`;
+    const [live, all] = await Promise.all([
+      prisma.project.count({ where: { serviceId: id, deletedAt: null } }),
+      prisma.project.count({ where: { serviceId: id } }),
+    ]);
+    if (live) return `used:projects:${live}`;
+    if (all) return `used:archivedProjects:${all}`;
   }
   return null;
 }
