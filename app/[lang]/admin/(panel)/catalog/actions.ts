@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { requireUser } from "@/app/lib/auth/require-user";
 import { languages } from "@/app/lib/i18n";
 import type { ActionResult } from "@/app/lib/admin/common";
+import { revalidatePath, updateTag } from "next/cache";
+
 import {
   createProduct,
   updateProduct,
@@ -18,6 +19,7 @@ import {
 } from "@/app/lib/admin/finishes";
 
 function refresh(section: "products" | "finishes") {
+  updateTag(section);
   for (const lang of languages) revalidatePath(`/${lang}/${section}`);
 }
 
