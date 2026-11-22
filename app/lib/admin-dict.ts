@@ -3,7 +3,12 @@ import type { Language } from "./i18n";
 export const adminDict = {
   ar: {
     title: "لوحة التحكم",
-    nav: { home: "الرئيسية", projects: "المشاريع", inquiries: "الطلبات" },
+    nav: {
+      home: "الرئيسية",
+      projects: "المشاريع",
+      inquiries: "الطلبات",
+      finishes: "الكسوات",
+    },
     logout: "تسجيل الخروج",
     role: { admin: "مدير", editor: "محرر" },
     hello: "مرحباً",
@@ -80,6 +85,17 @@ export const adminDict = {
       delete: "حذف المشروع",
       confirmDelete: "حذف هذا المشروع؟",
       errors: "يرجى تصحيح الأخطاء التالية",
+    },
+    fi: {
+      newFinish: "كسوة جديدة",
+      editFinish: "تعديل الكسوة",
+      back: "كل الكسوات",
+      color: "اللون",
+      colorHint: "اختياري، مثل #C9A24B",
+      name: "الاسم",
+      description: "الوصف",
+      delete: "حذف الكسوة",
+      confirmDelete: "حذف هذه الكسوة؟",
     },
   },
   en: {
@@ -162,6 +178,17 @@ export const adminDict = {
       delete: "Delete project",
       confirmDelete: "Delete this project?",
       errors: "Please fix these errors",
+    },
+    fi: {
+      newFinish: "New finish",
+      editFinish: "Edit finish",
+      back: "All finishes",
+      color: "Color",
+      colorHint: "Optional, like #C9A24B",
+      name: "Name",
+      description: "Description",
+      delete: "Delete finish",
+      confirmDelete: "Delete this finish?",
     },
   },
 } satisfies Record<Language, unknown>;

@@ -1,60 +1,72 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { isLanguage } from "@/app/lib/i18n";
+import type { Language } from "@/app/lib/i18n";
 import { adminDict } from "@/app/lib/admin-dict";
-import { one } from "@/app/lib/query";
-import { intParam } from "@/app/lib/public/common";
-import { requirePageUser } from "@/app/lib/auth/require-user";
-import { listAdminProjects } from "@/app/lib/admin/read";
 import { Pagination } from "@/app/components/pagination";
-import { RowActions } from "./row-actions";
+import { RowActions } from "@/app/components/admin/row-actions";
 
-const field =
-  "rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100 focus:border-amber-500 focus:outline-none";
+export type AdminRow = {
+  id: number;
+  title: string;
+  subtitle: string;
+  thumbUrl: string | null;
+  color?: string | null; // shown when there is no image
+  isPublished: boolean;
+};
 
-export default async function AdminProjectsPage({
-  params,
-  searchParams,
+export function AdminList({
+  lang,
+  title,
+  newHref,
+  newLabel,
+  basePath,
+  q,
+  status,
+  list,
+  rowHref,
+  setPublished,
 }: {
-  params: Promise<{ lang: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  lang: Language;
+  title: string;
+  newHref: string;
+  newLabel: string;
+  basePath: string;
+  q?: string;
+  status?: "published" | "draft";
+  list: { items: AdminRow[]; total: number; page: number; limit: number };
+  rowHref: (id: number) => string;
+  setPublished: (id: number, published: boolean) => Promise<unknown>;
 }) {
-  const { lang } = await params;
-  if (!isLanguage(lang)) notFound();
-  const sp = await searchParams;
-  const user = await requirePageUser(lang);
   const t = adminDict[lang].p;
-
-  const q = one(sp.q, 100);
-  const s = one(sp.status);
-  const status = s === "published" || s === "draft" ? s : undefined;
-  const page = intParam(one(sp.page, 6));
-
-  const list = await listAdminProjects(user, { lang, q, status, page });
   const pages = Math.max(1, Math.ceil(list.total / list.limit));
+  const field =
+    "rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100 focus:border-amber-500 focus:outline-none";
 
   const hrefFor = (p: number) => {
     const qs = new URLSearchParams();
     if (q) qs.set("q", q);
     if (status) qs.set("status", status);
     if (p > 1) qs.set("page", String(p));
-    const str = qs.toString();
-    return `/${lang}/admin/projects${str ? `?${str}` : ""}`;
+    const s = qs.toString();
+    return `${basePath}${s ? `?${s}` : ""}`;
   };
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{adminDict[lang].nav.projects}</h1>
+        <h1 className="text-2xl font-bold">{title}</h1>
         <Link
-          href={`/${lang}/admin/projects/new`}
+          href={newHref}
           className="rounded bg-amber-600 px-4 py-2 font-semibold text-stone-950 hover:bg-amber-500"
         >
-          {t.newProject}
+          {newLabel}
         </Link>
       </div>
 
-      <form method="get" className="mt-6 flex flex-wrap gap-3">
+      <form
+        method="get"
+        action={basePath}
+        className="mt-6 flex flex-wrap gap-3"
+      >
         <input
           name="q"
           type="search"
@@ -84,43 +96,50 @@ export default async function AdminProjectsPage({
         <p className="mt-12 text-center text-stone-400">{t.empty}</p>
       ) : (
         <ul className="mt-6 space-y-3">
-          {list.items.map((p) => (
+          {list.items.map((r) => (
             <li
-              key={p.id}
+              key={r.id}
               className="flex items-center gap-4 rounded border border-stone-800 bg-stone-900/60 p-3"
             >
-              {p.thumbUrl ? (
+              {r.thumbUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={p.thumbUrl}
+                  src={r.thumbUrl}
                   alt=""
                   className="h-12 w-16 shrink-0 rounded object-cover"
                 />
               ) : (
-                <div className="h-12 w-16 shrink-0 rounded bg-stone-800" />
+                <div
+                  className="h-12 w-16 shrink-0 rounded bg-stone-800"
+                  style={r.color ? { backgroundColor: r.color } : undefined}
+                />
               )}
               <div className="min-w-0 flex-1">
                 <Link
-                  href={`/${lang}/admin/projects/${p.id}`}
+                  href={rowHref(r.id)}
                   className="block truncate font-medium hover:text-amber-500"
                 >
-                  {p.title || t.noTitle}
+                  {r.title || t.noTitle}
                 </Link>
                 <p className="truncate text-xs text-stone-400" dir="ltr">
-                  {p.slug}
-                  {p.year ? ` · ${p.year}` : ""}
+                  {r.subtitle}
                 </p>
               </div>
               <span
                 className={`rounded px-2 py-0.5 text-xs ${
-                  p.isPublished
+                  r.isPublished
                     ? "bg-emerald-900/60 text-emerald-300"
                     : "bg-stone-800 text-stone-400"
                 }`}
               >
-                {p.isPublished ? t.published : t.draft}
+                {r.isPublished ? t.published : t.draft}
               </span>
-              <RowActions id={p.id} published={p.isPublished} lang={lang} />
+              <RowActions
+                id={r.id}
+                published={r.isPublished}
+                lang={lang}
+                action={setPublished}
+              />
             </li>
           ))}
         </ul>

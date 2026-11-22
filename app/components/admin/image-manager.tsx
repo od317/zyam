@@ -7,7 +7,7 @@ import { adminDict } from "@/app/lib/admin-dict";
 import {
   deleteProjectImageAction,
   reorderProjectImagesAction,
-} from "./actions";
+} from "@/app/[lang]/admin/(panel)/projects/actions";
 
 type Img = {
   id: number;

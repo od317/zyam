@@ -5,7 +5,7 @@ import { adminDict } from "@/app/lib/admin-dict";
 import { requirePageUser } from "@/app/lib/auth/require-user";
 import { getAdminProject, getProjectFormOptions } from "@/app/lib/admin/read";
 import { ProjectForm } from "../project-form";
-import { ImageManager } from "../image-manager";
+import { ImageManager } from "@/app/components/admin/image-manager";
 
 export default async function EditProjectPage({
   params,

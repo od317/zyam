@@ -178,3 +178,96 @@ export async function getProjectFormOptions(actor: Actor, lang: Language) {
     })),
   };
 }
+
+export async function listAdminFinishes(
+  actor: Actor,
+  opts: {
+    lang: Language;
+    q?: string;
+    status?: "published" | "draft";
+    page?: number;
+  },
+) {
+  assertStaff(actor);
+  const { page, limit, skip } = pageParams(opts.page, 20);
+  const where: Prisma.FinishWhereInput = { deletedAt: null };
+  if (opts.status) where.isPublished = opts.status === "published";
+  if (opts.q?.trim()) {
+    const q = opts.q.trim().slice(0, 100);
+    where.OR = [
+      { id: { in: await searchIds("finish", q) } },
+      { slug: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  const [rows, total] = await Promise.all([
+    prisma.finish.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        slug: true,
+        colorHex: true,
+        isPublished: true,
+        translations: { select: { language: true, name: true } },
+        images: {
+          where: { status: "ready" },
+          orderBy: { sortOrder: "asc" },
+          take: 1,
+          select: { thumbUrl: true },
+        },
+      },
+    }),
+    prisma.finish.count({ where }),
+  ]);
+  return {
+    items: rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      colorHex: r.colorHex,
+      isPublished: r.isPublished,
+      title: pick(r.translations, opts.lang)?.name ?? "",
+      thumbUrl: r.images[0]?.thumbUrl ?? null,
+    })),
+    page,
+    limit,
+    total,
+  };
+}
+
+export async function getAdminFinish(actor: Actor, id: number) {
+  assertStaff(actor);
+  const f = await prisma.finish.findFirst({
+    where: { id, deletedAt: null },
+    select: {
+      id: true,
+      slug: true,
+      colorHex: true,
+      isPublished: true,
+      translations: {
+        select: { language: true, name: true, description: true },
+      },
+      images: {
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, status: true, thumbUrl: true },
+      },
+    },
+  });
+  if (!f) return null;
+  const tr = (language: Language) => {
+    const t = f.translations.find((x) => x.language === language);
+    return { name: t?.name ?? "", description: t?.description ?? "" };
+  };
+  return {
+    id: f.id,
+    slug: f.slug,
+    colorHex: f.colorHex ?? "",
+    isPublished: f.isPublished,
+    translations: { ar: tr("ar"), en: tr("en") },
+    images: f.images,
+  };
+}
+export type AdminFinish = NonNullable<
+  Awaited<ReturnType<typeof getAdminFinish>>
+>;

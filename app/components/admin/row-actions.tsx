@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Language } from "@/app/lib/i18n";
 import { adminDict } from "@/app/lib/admin-dict";
-import { setPublishedAction } from "./actions";
+import { setPublishedAction } from "@/app/[lang]/admin/(panel)/projects/actions";
 
 export function RowActions({
   id,
