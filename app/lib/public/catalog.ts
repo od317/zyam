@@ -3,6 +3,7 @@ import { prisma } from "../prisma";
 import type { Language } from "../i18n";
 import { pageParams, pick, priceView, readyImages } from "./common";
 import { searchIds } from "./search";
+import { cacheLife, cacheTag } from "next/cache";
 import {
   finishCardSelect,
   productCardSelect,
@@ -23,7 +24,19 @@ export type ProductListQuery = {
   limit?: number;
 };
 
+// Searches are free text, so they are never cached: that would let anyone fill the cache with random words.
 export async function listPublicProducts(opts: ProductListQuery) {
+  return opts.q?.trim() ? queryProducts(opts) : cachedProducts(opts);
+}
+
+async function cachedProducts(opts: ProductListQuery) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("products", "categories", "finishes");
+  return queryProducts(opts);
+}
+
+async function queryProducts(opts: ProductListQuery) {
   const { page, limit, skip } = pageParams(opts.page, opts.limit);
 
   const where: Prisma.ProductWhereInput = { ...live };
@@ -63,6 +76,8 @@ export async function listPublicProducts(opts: ProductListQuery) {
 }
 
 export async function listProductCategories(lang: Language) {
+  "use cache";
+
   const rows = await prisma.productCategory.findMany({
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: {
@@ -90,6 +105,8 @@ export async function listProductCategories(lang: Language) {
 }
 
 export async function getPublicProduct(slug: string, lang: Language) {
+  "use cache";
+
   const p = await prisma.product.findFirst({
     where: { slug, ...live },
     select: {
@@ -205,6 +222,7 @@ export async function listPublicFinishes(opts: {
 }
 
 export async function getPublicFinish(slug: string, lang: Language) {
+  "use cache";
   const f = await prisma.finish.findFirst({
     where: { slug, ...live },
     select: {
